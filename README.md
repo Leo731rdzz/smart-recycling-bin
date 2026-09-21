@@ -15,7 +15,7 @@ This project integrates a Python backend running an Edge Impulse model with an a
 * **Manual Override:** Includes a hardware interrupt (push button with debounce) allowing operators to manually cycle through servo positions.
 
 ## Hardware Requirements
-* Advanced Arduino Board (e.g., Portenta/GIGA with MPU/MCU architecture)
+* Arduino UNO Q 4GB
 * USB Webcam
 * Servo Motor
 * DFPlayer Mini MP3 Module + Micro SD Card (FAT32)
