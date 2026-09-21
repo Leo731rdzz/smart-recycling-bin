@@ -1,0 +1,41 @@
+##System Architecture: Dual-Processor Communication & Edge Impulse
+This project runs on an advanced dual-core/dual-processor Arduino board (featuring a Linux-based Microprocessor and a real-time Microcontroller). This architecture allows heavy AI workloads to run simultaneously with precise hardware control without bottlenecking each other.
+
+Here is how the three main components—the Edge Impulse model, the Python script, and the Arduino C++ sketch—interact:
+
+1. The Brain: Edge Impulse & Python (Microprocessor / MPU)
+The high-level processing happens on the board's Linux-side microprocessor, which runs Python and the AI inference engine.
+
+The Inference Runner: The Edge Impulse model runs as an independent local server process (ei-video-obj-detection-runner). It continuously captures frames from the USB webcam and performs Object Detection inference.
+
+The Python Backend: The main.py script uses the Arduino App Bricks library to establish a WebSocket/TCP connection to the Edge Impulse runner. It actively listens to the video stream, extracting bounding boxes, object labels, and confidence scores in real-time.
+
+Decision Making: Python applies stability filters and cooldown logic to these incoming data streams. When it confidently verifies an object (e.g., an "apple"), it decides it is time to move the physical motors.
+
+2. The Muscle: Arduino Sketch (Microcontroller / MCU)
+The low-level, real-time hardware control happens on the Microcontroller unit (MCU).
+
+Real-Time Execution: The sketch.ino file is written in standard C++. It is responsible for driving the Servo motor, reading the Push Button state (with debounce logic), and communicating with the DFPlayer Mini via Hardware Serial (Serial1).
+
+Why split it? Hardware components like servos and MP3 players require strict electrical timing and instant responsiveness. If the MCU had to process heavy video frames, the motors would stutter. By isolating this on the MCU, the hardware runs flawlessly.
+
+3. The Bridge: Remote Procedure Call (RPC)
+Because Python is running on the Linux processor and C++ is running on the real-time microcontroller, they cannot share regular variables. They communicate over an internal hardware bus using the Arduino_RouterBridge library.
+
+Providing Functions (C++ Side): Inside the Arduino sketch, we register specific functions to the Bridge using Bridge.provide(). This essentially broadcasts to the Linux side: "Hey, I know how to move a servo and play audio, here are my commands."
+
+C++
+Bridge.provide("set_servo", set_servo);
+Bridge.provide("play_audio", play_audio);
+Calling Functions (Python Side): When the Python script decides to act, it sends a Remote Procedure Call (RPC) across the bridge using Bridge.call().
+
+Python
+Bridge.call("play_audio", 1)  # Tells the MCU to play track 1
+Bridge.call("set_servo", 180) # Tells the MCU to move the motor to 180°
+The Workflow:
+
+Edge Impulse sees an object.
+
+Python filters the data and sends an RPC command via the Bridge.
+
+The C++ Microcontroller receives the command and instantly physically moves the Servo and triggers the DFPlayer.
